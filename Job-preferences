@@ -1,0 +1,203 @@
+import tkinter as tk
+from tkinter import ttk, messagebox
+from datetime import datetime
+import json
+
+# Global storage for submission data
+submission_data = {
+    "initial_date": None,
+    "last_date": None,
+    "user_name": "",
+    "industry": "",
+    "subindustry": "",
+    "companies": {
+        "Start-ups": {},
+        "Medium-sized": {},
+        "Big": {}
+    }
+}
+
+# Dynamic subindustry data
+subindustries = {
+    "Information Technology": ["Software and services", "Technology hardware and equipment",
+                               "Semiconductors and semiconductor equipment", "IT services",
+                                "Software products", "Engineering and R&D", "Business process management",
+                               "Telecommunications", "Cybersecurity", "Medical"],
+    "Health Care": ["Pharmaceuticals", "Medical Devices", "Health Services", "Childcare Services",
+                    "Environmental Public Health", "Fitness", "Health Information Management", "Public Health",
+                    "Social Services", "Community Healthcare"],
+    "Financials": ["Banking", "Investment Management", "Insurance"],
+    "Consumer Discretionary": ["Automobiles & Components", "Consumer Discretionary Distribution & Retail",
+                               "Consumer Durables & Apparel", "Consumer Services"],
+    "Communication Services": ["Media & Entertainment", "Telecommunications Services"],
+    "Industrials": ["Capital Goods", "Commercial & Professional Services", "Transportation"],
+    "Consumer Staples": ["Consumer Staples Distribution & Retail", "Food, Beverage & Tobacco", "Household & Personal Products"],
+    "Energy": ["Energy Equipment & Services", "Oil, Gas & Fuels"],
+    "Utilities": ["Electric Utilities", "Gas Utilities", "Multi-Utilities", "Multi-Utilities"],
+    "Real Estate": ["Equity Real Estate Investment Trusts", "Real Estate Management & Development"],
+    "Materials": ["Chemicals", "Construction Materials", "Containers & Packaging", "Metals & Mining", "Paper & Forest Products"],
+}
+
+# Function to dynamically generate fields for companies and job titles
+def generate_fields():
+    for widget in frame_content.winfo_children():
+        widget.destroy()  # Clear existing widgets
+
+    tk.Label(frame_content, text="Enter Job Titles for Each Company", font=("Arial", 12, "bold")).grid(row=0, column=0, columnspan=4, pady=10, sticky="w")
+    tk.Label(frame_content, text="Start-up Companies:").grid(row=1, column=0, padx=10, pady=5, sticky="w")
+    for i in range(10):
+        tk.Entry(frame_content, textvariable=startup_companies_vars[i]).grid(row=i+2, column=0, padx=10, pady=5)
+        for j in range(3):
+            tk.Entry(frame_content, textvariable=startup_jobs_vars[i][j], width=15).grid(row=i+2, column=j+1, padx=5, pady=5)
+
+    tk.Label(frame_content, text="Medium-sized Companies:").grid(row=12, column=0, padx=10, pady=5, sticky="w")
+    for i in range(10):
+        tk.Entry(frame_content, textvariable=medium_companies_vars[i]).grid(row=i+13, column=0, padx=10, pady=5)
+        for j in range(3):
+            tk.Entry(frame_content, textvariable=medium_jobs_vars[i][j], width=15).grid(row=i+13, column=j+1, padx=5, pady=5)
+
+    tk.Label(frame_content, text="Big Companies:").grid(row=23, column=0, padx=10, pady=5, sticky="w")
+    for i in range(10):
+        tk.Entry(frame_content, textvariable=big_companies_vars[i]).grid(row=i+24, column=0, padx=10, pady=5)
+        for j in range(3):
+            tk.Entry(frame_content, textvariable=big_jobs_vars[i][j], width=15).grid(row=i+24, column=j+1, padx=5, pady=5)
+
+# Function to handle form submission
+def submit_form():
+    user_name = user_name_var.get()
+    industry = industry_var.get()
+    subindustry = subindustry_var.get()
+
+    if not user_name or not industry or not subindustry:
+        messagebox.showerror("Error", "Please complete all required fields.")
+        return
+
+    # Update submission data
+    global submission_data
+    if not submission_data["initial_date"]:
+        submission_data["initial_date"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    submission_data["last_date"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    submission_data["user_name"] = user_name
+    submission_data["industry"] = industry
+    submission_data["subindustry"] = subindustry
+
+    # Collect company and job data
+    submission_data["companies"]["Start-ups"] = {startup_companies_vars[i].get(): [var.get() for var in startup_jobs_vars[i]] for i in range(10) if startup_companies_vars[i].get()}
+    submission_data["companies"]["Medium-sized"] = {medium_companies_vars[i].get(): [var.get() for var in medium_jobs_vars[i]] for i in range(10) if medium_companies_vars[i].get()}
+    submission_data["companies"]["Big"] = {big_companies_vars[i].get(): [var.get() for var in big_jobs_vars[i]] for i in range(10) if big_companies_vars[i].get()}
+
+    messagebox.showinfo("Submission Successful", "Your data has been saved.")
+    save_data_to_file()
+
+# Function to save data to a file
+def save_data_to_file():
+    with open("submission_data.json", "w") as file:
+        json.dump(submission_data, file)
+
+# Function to load data from file
+def load_data_from_file():
+    global submission_data
+    try:
+        with open("submission_data.json", "r") as file:
+            submission_data = json.load(file)
+            user_name_var.set(submission_data["user_name"])
+            industry_var.set(submission_data["industry"])
+            subindustry_var.set(submission_data["subindustry"])
+            generate_fields()  # Re-generate fields
+    except FileNotFoundError:
+        pass
+
+# Function to generate a printable report
+def generate_report():
+    report = f"User Name: {submission_data['user_name']}\n"
+    report += f"Initial Submission Date: {submission_data['initial_date']}\n"
+    report += f"Last Submission Date: {submission_data['last_date']}\n"
+    report += f"Industry: {submission_data['industry']}\n"
+    report += f"Subindustry: {submission_data['subindustry']}\n"
+    report += "\nCompanies and Job Titles:\n"
+
+    for category, companies in submission_data["companies"].items():
+        report += f"\n{category}:\n"
+        for company, jobs in companies.items():
+            report += f"  - {company}: {', '.join(job for job in jobs if job)}\n"
+
+    report_window = tk.Toplevel(root)
+    report_window.title("Printable Report")
+    text_widget = tk.Text(report_window, wrap="word", width=80, height=30)
+    text_widget.insert("1.0", report)
+    text_widget.pack()
+    text_widget.configure(state="disabled")
+
+# Initialize the main window
+root = tk.Tk()
+root.title("Job Search Setup")
+root.geometry("900x800")
+
+# Title
+tk.Label(root, text="Job Search Preferences Form", font=("Arial", 16, "bold")).pack(pady=10)
+
+# User Information Section
+user_name_var = tk.StringVar()
+tk.Label(root, text="User Name:").pack(anchor="w", padx=10, pady=5)
+tk.Entry(root, textvariable=user_name_var, width=30).pack(anchor="w", padx=10, pady=5)
+
+# Industry selection
+industry_var = tk.StringVar()
+tk.Label(root, text="Select Industry:").pack(anchor="w", padx=10, pady=5)
+industry_menu = ttk.Combobox(root, textvariable=industry_var, values=list(subindustries.keys()), state="readonly", width=50)
+industry_menu.pack(anchor="w", padx=10, pady=5)
+
+# Subindustry selection
+subindustry_var = tk.StringVar()
+tk.Label(root, text="Select Subindustry:").pack(anchor="w", padx=10, pady=5)
+subindustry_menu = ttk.Combobox(root, textvariable=subindustry_var, state="readonly", width=50)
+subindustry_menu.pack(anchor="w", padx=10, pady=5)
+
+def update_subindustries(event):
+    selected_industry = industry_var.get()
+    subindustry_menu["values"] = subindustries.get(selected_industry, [])
+    subindustry_menu.set("")
+
+industry_menu.bind("<<ComboboxSelected>>", update_subindustries)
+
+# Scrollable frame setup
+canvas = tk.Canvas(root)
+scrollbar = ttk.Scrollbar(root, orient="vertical", command=canvas.yview)
+scrollable_frame = ttk.Frame(canvas)
+
+scrollable_frame.bind(
+    "<Configure>",
+    lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+)
+
+canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+canvas.configure(yscrollcommand=scrollbar.set)
+
+canvas.pack(side="left", fill="both", expand=True)
+scrollbar.pack(side="right", fill="y")
+
+# Frame to dynamically display companies and job titles
+frame_content = ttk.Frame(scrollable_frame)
+frame_content.pack(pady=10)
+
+# Variables for storing data
+startup_companies_vars = [tk.StringVar() for _ in range(10)]
+medium_companies_vars = [tk.StringVar() for _ in range(10)]
+big_companies_vars = [tk.StringVar() for _ in range(10)]
+
+startup_jobs_vars = [[tk.StringVar() for _ in range(3)] for _ in range(10)]
+medium_jobs_vars = [[tk.StringVar() for _ in range(3)] for _ in range(10)]
+big_jobs_vars = [[tk.StringVar() for _ in range(3)] for _ in range(10)]
+
+# Buttons
+btn_submit = ttk.Button(root, text="Submit", command=submit_form)
+btn_submit.pack(side="left", padx=10, pady=10)
+
+btn_generate_report = ttk.Button(root, text="Generate Report", command=generate_report)
+btn_generate_report.pack(side="left", padx=10, pady=10)
+
+# Load existing data and generate fields
+load_data_from_file()
+generate_fields()
+
+root.mainloop()
